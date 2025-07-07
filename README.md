@@ -1,9 +1,9 @@
 # Valorant-things - Collection of Valorant Utilities
 
 # 🌐 Languages
-**Russian [(ru)](https://github.com/v8816/Valorant-things/blob/main/README_ru.md)**
+-**Russian [(ru)](https://github.com/v8816/Valorant-things/blob/main/README_ru.md)**
 
-**English (en)**
+-**English (en)**
 
 > A collection of useful tools and scripts for enhancing your Valorant gaming experience. This repository contains various utilities that provide additional functionality for Riot's popular tactical shooter.
 
