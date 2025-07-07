@@ -24,7 +24,7 @@
 ###For Python Scripts:
 1. Install Python 3.10+
 2. Download the script of the tool and start it
-###For Executables (.exe):
+### For Executables (.exe):
 1. Visit the [Releases section](https://github.com/v8816/Valorant-things/releases)
 2. Download the latest version of the utility you need
 3. Run the .exe file (you may need to allow it through your antivirus)
