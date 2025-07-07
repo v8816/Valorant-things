@@ -1,11 +1,22 @@
-import sys, time, random, json, subprocess, importlib
+import sys, time, random, json, subprocess, importlib, ctypes
 from pathlib import Path
+
+if sys.platform == "win32":
+    whnd = ctypes.windll.kernel32.GetConsoleWindow()
+    if whnd != 0:
+        ctypes.windll.user32.ShowWindow(whnd, 0)
 
 def ensure(pkg):
     try:
         importlib.import_module(pkg)
     except ImportError:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        kwargs = {}
+        if sys.platform == "win32":
+            kwargs["startupinfo"] = startupinfo
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        subprocess.check_call([sys.executable, "-m", "pip", "install", pkg], **kwargs)
         importlib.invalidate_caches()
 
 for _p in ("PySide6", "valclient", "pynput"):
