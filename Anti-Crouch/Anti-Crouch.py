@@ -1,77 +1,84 @@
-import ctypes, os, sys
+import ctypes
+import os
+import sys
 import subprocess
 import tkinter as tk
+from tkinter import messagebox
+
 def install_package(package):
-    """Устанавливает указанный пакет через pip"""
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-        print(f"Успешно установлен модуль: {package}")
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        kwargs = {
+            'startupinfo': startupinfo,
+            'creationflags': subprocess.CREATE_NO_WINDOW
+        } if sys.platform == "win32" else {}
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package], **kwargs)
         return True
-    except Exception as e:
-        print(f"Ошибка установки {package}: {e}")
+    except Exception:
         return False
 
-# Проверка наличия keyboard
+if sys.platform == "win32":
+    whnd = ctypes.windll.kernel32.GetConsoleWindow()
+    if whnd != 0:
+        ctypes.windll.user32.ShowWindow(whnd, 0)
+
 try:
     import keyboard
 except ImportError:
-    print("Модуль 'keyboard' не найден. Пытаюсь установить...")
-    if install_package("keyboard"):
-        import keyboard
-    else:
-        print("Не удалось установить модуль keyboard. Установите вручную: pip install keyboard")
+    if not install_package("keyboard"):
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror("Ошибка", "Не удалось установить модуль keyboard. Установите вручную: pip install keyboard")
         sys.exit(1)
+    import keyboard
 
-
-def _is_admin() -> bool:
-    try:  # win only
+def _is_admin():
+    try:
         return ctypes.windll.shell32.IsUserAnAdmin()
     except:
         return False
 
-if not _is_admin():  
-    ctypes.windll.shell32.ShellExecuteW(
-        None, "runas", sys.executable,
-        f'"{os.path.abspath(__file__)}"', None, 1)
+if sys.platform == "win32" and not _is_admin():  
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, f'"{os.path.abspath(__file__)}"', None, 1)
     sys.exit()
 
+MOVEMENT = ('w', 'a', 's', 'd')
+active = False
+blocking = False
 
-MOVEMENT = ('w', 'a', 's', 'd')       
-ctrl_blocked = False                  
-active      = False                  
+def evaluate_condition(event=None):
+    global blocking
+    if not active:
+        new_blocking = False
+    else:
+        shift_down = keyboard.is_pressed('shift')
+        moving_down = any(keyboard.is_pressed(k) for k in MOVEMENT)
+        new_blocking = shift_down and not moving_down
 
-def evaluate_block():
-    """Решаем, нужно ли блокировать Ctrl прямо сейчас."""
-    global ctrl_blocked
-    if not active:                    
-        if ctrl_blocked:
-            keyboard.unblock_key('ctrl')
-            ctrl_blocked = False
-        return
+    if new_blocking != blocking:
+        if new_blocking:
+            keyboard.release('ctrl')
+        blocking = new_blocking
 
-    shift_down   = keyboard.is_pressed('shift')
-    moving_down  = any(keyboard.is_pressed(k) for k in MOVEMENT)
-    should_block = shift_down and not moving_down
+def global_hook(event):
+    if blocking and event.name in ('ctrl', 'ctrl left', 'ctrl right'):
+        return False
+    return True
 
-    if should_block and not ctrl_blocked:
-        keyboard.block_key('ctrl')
-        keyboard.release('ctrl')
-        ctrl_blocked = True
-    elif not should_block and ctrl_blocked:
-        keyboard.unblock_key('ctrl')
-        ctrl_blocked = False
-
-HOOK_KEYS = ('shift', 'ctrl') + MOVEMENT
-for key in HOOK_KEYS:
-    keyboard.on_press_key(key,  lambda e: evaluate_block())
-    keyboard.on_release_key(key, lambda e: evaluate_block())
+def start_keyboard_listener():
+    keyboard.hook(global_hook)
+    keys = ['shift'] + list(MOVEMENT)
+    for key in keys:
+        keyboard.on_press_key(key, evaluate_condition)
+        keyboard.on_release_key(key, evaluate_condition)
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Shift-CTRL Blocker")
         self.resizable(False, False)
-
+        
         self.state_lbl = tk.Label(self, text="OFF", width=8,
                                   font=("Segoe UI", 16, "bold"),
                                   bg="#d9534f", fg="white")
@@ -92,11 +99,13 @@ class App(tk.Tk):
             text="ON" if active else "OFF",
             bg="#5cb85c" if active else "#d9534f"
         )
-        evaluate_block()    
+        evaluate_condition()
 
     def _on_close(self):
-        keyboard.unblock_key('ctrl')
+        keyboard.unhook_all()
         self.destroy()
+        sys.exit(0)
 
 if __name__ == "__main__":
+    start_keyboard_listener()
     App().mainloop()
