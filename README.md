@@ -1,7 +1,7 @@
 # Valorant-things - Collection of Valorant Utilities
 
 # 🌐 Languages
-**Russian [(ru)]()**
+**Russian [(ru)](https://github.com/v8816/Valorant-things/blob/main/README_ru.md)**
 
 **English (en)**
 
